@@ -1,0 +1,375 @@
+alias: ePaper - Calendar 4.2
+description: ""
+triggers:
+  - minutes: /30
+    seconds: "50"
+    trigger: time_pattern
+conditions:
+  - condition: time
+    after: "06:00:00"
+    before: "23:00:00"
+actions:
+  - alias: Get events 0 day(s) from now
+    data:
+      start_date_time: "{{ today_at('00:00') }}"
+      end_date_time: "{{today_at('00:00') + timedelta(days=1)}}"
+    response_variable: cal_day_0
+    target:
+      entity_id:
+        - calendar.our_house
+    action: calendar.get_events
+  - alias: Get events 1 day(s) from now
+    data:
+      start_date_time: "{{ today_at('00:00') + timedelta(days=1) }}"
+      end_date_time: "{{ today_at('00:00') + timedelta(days=2) }}"
+    response_variable: cal_day_1
+    target:
+      entity_id:
+        - calendar.our_house
+    action: calendar.get_events
+  - alias: Get events 2 day(s) from now
+    data:
+      start_date_time: "{{ today_at('00:00') + timedelta(days=2) }}"
+      end_date_time: "{{ today_at('00:00') + timedelta(days=3) }}"
+    response_variable: cal_day_2
+    target:
+      entity_id:
+        - calendar.our_house
+    action: calendar.get_events
+  - alias: Get events 4 day(s) from now
+    data:
+      start_date_time: "{{ today_at('00:00') + timedelta(days=3) }}"
+      end_date_time: "{{ today_at('00:00') + timedelta(days=4) }}"
+    response_variable: cal_day_3
+    target:
+      entity_id:
+        - calendar.our_house
+    action: calendar.get_events
+  - alias: Extract events from all calendars
+    variables:
+      events_day0: >
+        {{ cal_day_0.values() | map(attribute='events') | list |
+        sum(start=[])}} 
+      events_day1: >
+        {{ cal_day_1.values() | map(attribute='events') | list |
+        sum(start=[])}} 
+      events_day2: >
+        {{ cal_day_2.values() | map(attribute='events') | list |
+        sum(start=[])}} 
+      events_day3: >
+        {{ cal_day_3.values() | map(attribute='events') | list |
+        sum(start=[])}} 
+      count0: |
+        {% if (events_day0 | count == 0) %}
+          1
+        {% else %}
+          {{ events_day0 | count }}
+        {% endif %}
+      count1: |
+        {% if (events_day1 | count == 0) %}
+          1
+        {% else %}
+          {{ events_day1 | count }}
+        {% endif %}
+      count2: |
+        {% if (events_day2 | count == 0) %}
+          1
+        {% else %}
+          {{ events_day2 | count }}
+        {% endif %}
+      count3: |
+        {% if (events_day3 | count == 0) %}
+          1
+        {% else %}
+          {{ events_day3 | count }}
+        {% endif %}
+      gap_header: 45
+      gap_line: 3
+      gap_days: 3
+      gap_title: 20
+      gap_text: 17
+      days:
+        - Monday
+        - Tuesday
+        - Wednesday
+        - Thursday
+        - Friday
+        - Saturday
+        - Sunday
+      months:
+        - January
+        - February
+        - March
+        - April
+        - May
+        - June
+        - July
+        - August
+        - September
+        - October
+        - November
+        - December
+  - alias: Send generated Agenda to OEPL
+    metadata: {}
+    data:
+      rotate: 0
+      dryrun: false
+      payload:
+        - type: rectangle
+          x_start: 0
+          x_end: 400
+          y_start: 0
+          y_end: |
+            {{ gap_header + 1 * gap_line}}
+          width: 0
+          fill: black
+          outline: black
+        - type: icon
+          value: calendar
+          x: 2
+          "y": 0
+          size: 50
+          color: red
+        - type: text
+          value: Kalender
+          font: ../../media/GothamRnd-Bold.ttf
+          x: 50
+          "y": 2
+          size: 55
+          color: white
+        - type: text
+          value: Uke {{ now().isocalendar()[1] }}
+          font: ../../media/GothamRnd-Bold.ttf
+          x: 395
+          "y": 22
+          size: 27
+          color: red
+          anchor: rt
+        - type: line
+          fill: red
+          width: 3
+          x_start: 0
+          y_start: |
+            {{ gap_header + 1 * gap_line}}
+          x_end: 400
+          y_end: |
+            {{ gap_header + 1 * gap_line}}
+        - type: text
+          value: >-
+            {{ days[today_at('00:00').weekday()] }} {{ today_at('00:00').day }}.
+            {{ months[today_at('00:00').month-1] }} 
+          font: ../../media/GothamRnd-Bold.ttf
+          x: 6
+          "y": |
+            {{ gap_header + 2 * gap_line}}
+          size: 24
+          color: red
+        - type: line
+          fill: black
+          width: 1
+          x_start: 0
+          y_start: |
+            {{ gap_header + gap_title + 3 * gap_line}}
+          x_end: 400
+          y_end: |
+            {{ gap_header + gap_title + 3 * gap_line}}
+        - type: multiline
+          value: |
+            {% if events_day0 | count > 0 %}
+              {% for event in (events_day0 | sort(attribute='start') | list) -%} 
+                {% if as_timestamp(event.start) | timestamp_custom('%H:%M') == "00:00"%}
+                  #Heldags - {{ event.summary }}
+                {% else %}
+                  #{% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.start) | timestamp_custom('%w') | int)-1][:3] }} {% endif %}{{as_timestamp(event.start) | timestamp_custom('%H:%M') }} - {% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.end) | timestamp_custom('%w') | int)-1][:3] }}{% endif %} {{as_timestamp(event.end) | timestamp_custom('%H:%M') }}: {{ event.summary }}
+                {% endif -%}
+              {% endfor -%}
+            {% else %}
+              #Ingenting
+            {% endif -%}
+          font: ../../media/OpenSans-Medium.ttf
+          start_y: |
+            {{ gap_header + gap_title + 0 * gap_line}}
+          delimiter: "#"
+          size: 20
+          offset_y: 20
+          x: 8
+        - type: line
+          fill: red
+          width: 3
+          x_start: 0
+          y_start: >
+            {{ gap_header + gap_title + 2 * gap_line + gap_days + ((count0 + 1)
+            * gap_text)}}
+          x_end: 400
+          y_end: >
+            {{ gap_header + gap_title + 2 * gap_line + gap_days + ((count0 + 1)
+            * gap_text)}}
+        - type: text
+          value: >-
+            {{ days[(today_at('00:00')+ timedelta(days=1)).weekday()] }} {{
+            (today_at('00:00') + timedelta(days=1)).day }}. {{
+            months[(today_at('00:00')+ timedelta(days=1)).month-1] }}
+          font: ../../media/GothamRnd-Bold.ttf
+          x: 6
+          "y": >
+            {{ gap_header + gap_title + 3 * gap_line + gap_days + ((count0 + 1)
+            * gap_text)}}
+          size: 22
+          color: red
+        - type: line
+          fill: black
+          width: 1
+          x_start: 0
+          y_start: >
+            {{ gap_header + 2 * gap_title + 3 * gap_line + gap_days + ((count0 +
+            1) * gap_text)}}
+          x_end: 400
+          y_end: >
+            {{ gap_header + 2 * gap_title + 3 * gap_line + gap_days + ((count0 +
+            1) * gap_text)}}
+        - type: multiline
+          value: |
+            {% if events_day1 | count > 0 %}
+              {% for event in (events_day1 | sort(attribute='start') | list) -%} 
+                {% if as_timestamp(event.start) | timestamp_custom('%H:%M') == "00:00"%}
+                  #Heldags - {{ event.summary }}
+                {% else %}
+                  #{% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.start) | timestamp_custom('%w') | int)-1][:3] }} {% endif %}{{as_timestamp(event.start) | timestamp_custom('%H:%M') }} - {% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.end) | timestamp_custom('%w') | int)-1][:3] }}{% endif %} {{as_timestamp(event.end) | timestamp_custom('%H:%M') }}: {{ event.summary }}
+                {% endif -%}
+              {% endfor -%}
+            {% else %}
+              #Ingenting
+            {% endif -%}
+          font: ../../media/OpenSans-Medium.ttf
+          start_y: >
+            {{ gap_header + 2 * gap_title + 0 * gap_line + gap_days + ((count0 +
+            1 ) * gap_text)}}
+          offset_y: 20
+          delimiter: "#"
+          size: 20
+          x: 8
+          color: black
+        - type: line
+          visible: "{{true if (count0+count1+count2) < 9 else false}}"
+          fill: red
+          width: 3
+          x_start: 0
+          y_start: >
+            {{ gap_header + 2 * gap_title + 3 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1)) * gap_text)}}
+          x_end: 400
+          y_end: >
+            {{ gap_header + 2 * gap_title + 3 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1)) * gap_text)}}
+        - type: text
+          visible: "{{true if (count0+count1+count2) < 9 else false}}"
+          value: >-
+            {{ days[(today_at('00:00')+ timedelta(days=2)).weekday()] }} {{
+            (today_at('00:00') + timedelta(days=2)).day }}. {{
+            months[(today_at('00:00')+ timedelta(days=2)).month-1] }} 
+          font: ../../media/GothamRnd-Bold.ttf
+          x: 6
+          "y": >
+            {{ gap_header + 2 * gap_title + 4 * gap_line + gap_days + +
+            (((count0 + 1) + (count1 + 1)) * gap_text)}}
+          size: 22
+          color: red
+        - type: line
+          fill: black
+          visible: "{{true if (count0+count1+count2) < 9 else false}}"
+          width: 1
+          x_start: 0
+          y_start: >
+            {{ gap_header + 3 * gap_title + 4 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1)) * gap_text)}}
+          x_end: 400
+          y_end: >
+            {{ gap_header + 3 * gap_title + 4 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1)) * gap_text)}}
+        - type: multiline
+          value: |
+            {% if events_day2 | count > 0 %}
+              {% for event in (events_day2 | sort(attribute='start') | list) -%} 
+                {% if as_timestamp(event.start) | timestamp_custom('%H:%M') == "00:00"%}
+                  #Heldags - {{ event.summary }}
+                {% else %}
+                  #{% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.start) | timestamp_custom('%w') | int)-1][:3] }} {% endif %}{{as_timestamp(event.start) | timestamp_custom('%H:%M') }} - {% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.end) | timestamp_custom('%w') | int)-1][:3] }}{% endif %} {{as_timestamp(event.end) | timestamp_custom('%H:%M') }}: {{ event.summary }}
+                {% endif -%}
+              {% endfor -%}
+            {% else %}
+              #Ingenting
+            {% endif -%}
+          font: ../../media/OpenSans-Medium.ttf
+          start_y: >
+            {{ gap_header + 3 * gap_title + 1 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1)) * gap_text)}}
+          offset_y: 20
+          delimiter: "#"
+          size: 20
+          x: 8
+          color: black
+          visible: "{{true if (count0+count1+count2) < 9 else false}}"
+        - type: line
+          fill: red
+          visible: "{{true if (count0+count1+count2+count3) < 7 else false}}"
+          width: 3
+          x_start: 0
+          y_start: >
+            {{ gap_header + 3 * gap_title + 3 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1) + (count2 + 1)) * gap_text)}}
+          x_end: 400
+          y_end: >
+            {{ gap_header + 3 * gap_title + 3 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1) + (count2 + 1)) * gap_text)}}
+        - type: text
+          visible: "{{true if (count0+count1+count2+count3) < 7 else false}}"
+          value: >-
+            {{ days[(today_at('00:00') + timedelta(days=3)).weekday()] }} {{
+            (today_at('00:00') + timedelta(days=3)).day }}. {{
+            months[(today_at('00:00')+ timedelta(days=3)).month-1] }} 
+          font: ../../media/GothamRnd-Bold.ttf
+          x: 6
+          "y": >
+            {{ gap_header + 3 * gap_title + 4 * gap_line + gap_days + +
+            (((count0 + 1) + (count1 + 1) + (count2 + 1)) * gap_text)}}
+          size: 22
+          color: red
+        - type: line
+          visible: "{{true if (count0+count1+count2+count3) < 7 else false}}"
+          fill: black
+          width: 1
+          x_start: 0
+          y_start: >
+            {{ gap_header + 4 * gap_title + 4 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1) + (count2 + 1)) * gap_text)}}
+          x_end: 400
+          y_end: >
+            {{ gap_header + 4 * gap_title + 4 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1) + (count2 + 1)) * gap_text)}}
+        - type: multiline
+          value: |
+            {% if events_day3 | count > 0 %}
+              {% for event in (events_day3 | sort(attribute='start') | list) -%} 
+                {% if as_timestamp(event.start) | timestamp_custom('%H:%M') == "00:00"%}
+                  #Heldags - {{ event.summary }}
+                {% else %}
+                  #{% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.start) | timestamp_custom('%w') | int)-1][:3] }} {% endif %}{{as_timestamp(event.start) | timestamp_custom('%H:%M') }} - {% if as_timestamp(event.start) | timestamp_custom('%d%m%y') != as_timestamp(event.end) | timestamp_custom('%d%m%y') %}{{ days[(as_timestamp(event.end) | timestamp_custom('%w') | int)-1][:3] }}{% endif %} {{as_timestamp(event.end) | timestamp_custom('%H:%M') }}: {{ event.summary }}
+                {% endif -%}
+              {% endfor -%}
+            {% else %}
+              #Ingenting
+            {% endif -%}
+          font: ../../media/OpenSans-Medium.ttf
+          start_y: >
+            {{ gap_header + 4 * gap_title + 1 * gap_line + gap_days + (((count0
+            + 1) + (count1 + 1) + (count2 + 1)) * gap_text)}}
+          offset_y: 20
+          delimiter: "#"
+          size: 20
+          x: 8
+          visible: "{{true if (count0+count1+count2+count3) < 7 else false}}"
+          color: black
+    target:
+      device_id: 1d1983555b7734axxxxxxxxxxxx
+    action: open_epaper_link.drawcustom
+mode: restart
