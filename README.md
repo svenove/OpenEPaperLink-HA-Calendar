@@ -5,6 +5,8 @@ Also made the days easy to translate, fixed some issues with empty days, etc.
 
 Since this YAML only was available on the discord, it was hard to find it for new users. So I desided to just put it up on Github for simplicity.
 
+![image](https://github.com/user-attachments/assets/411d69d8-422c-43e8-9f1c-661fee2615d4)
+
 ## Integrations needed:
 * https://github.com/jonasniesner/open_epaper_link_homeassistant (Install via HACS)
 * A calendar (I use [Google calendar](https://www.home-assistant.io/integrations/google/))
