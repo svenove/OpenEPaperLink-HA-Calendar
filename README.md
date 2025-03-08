@@ -14,7 +14,7 @@ Since this YAML only was available on the discord, it was hard to find it for ne
 ## Initial setup
 1. Configure the OEPL-integration and your preferred calendar-integration.
 2. Create a new automation from the 4.2_automation.yaml
-3. Install GothamRnd-Bold.ttf to the "media"-folder (or remove all the "fonts:"-lines from the automation to use the default font - but that might mess up the spacing-calculations)
+3. Install GothamRnd-Bold.ttf and OpenSans-Medium.ttf to the "media"-folder (or remove all the "fonts:"-lines from the automation to use the default font - but that might mess up the spacing-calculations)
 4. Update the automation to use your preferred language and the calendar entity:
 - Replace all 4 instances of "calendar.our_house" with your calendar
 - Translate day-names and month-names into your preferred language
